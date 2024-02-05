@@ -1,0 +1,85 @@
+<div class="card">
+    <header class="card-header">
+        <p class="card-header-title">
+            {{ name }}
+        </p>
+    </header>
+    <div class="card-content">
+        {% match reason %}
+        {% when Some with (reason) %}
+        <div class="block content">
+            <p>Reason: {{reason|markdown|trim_outer_p|safe}}</p>
+        </div>
+        {% when None %}
+        {% endmatch %}
+        <div class="block">
+            <p>{{commit_sha1|commit|safe}} - {{ commit_message|truncate(180) }}
+
+                {% match target_branch %}
+                {% when Some with (branch) %}
+                - on branch {{branch|branch|safe}}
+                {% when None %}
+                {% endmatch %}
+            </p>
+            {% match compared_commit_sha1 %}
+            {% when Some with (compared_commit_sha1) %}
+            <p>
+                compared with {{ compared_commit_sha1|commit|safe }}
+            </p>
+            {% when None %}
+            <p>no other commit to compare against!</p>
+            {% endmatch %}
+        </div>
+        <div class="block content">
+            <div class="columns">
+                <div class="column is-half is-offset-one-quarter">
+                    {{ plot|safe }}
+                </div>
+            </div>
+        </div>
+        {% match compared_commit_sha1 %}
+        {% when Some with (_) %}
+        <div class="block content">
+            {{ summary|safe }}
+        </div>
+        {% when None %}
+        {% endmatch %}
+    </div>
+    <footer class="card-footer">
+
+        {%- macro target_branch_param(target_branch) -%}
+        {%- if !target_branch.is_empty() -%}
+        &target_branch={{-target_branch-}}
+        {%- endif -%}
+        {%- endmacro -%}
+
+        {%- macro base_url(baseline_branch, target_branch) -%}
+        {%- if !baseline_branch.is_empty() -%}
+        "view_spans?commit_sha1={{commit_sha1}}&workload_name={{name}}{%- call target_branch_param(target_branch)
+        -%}&baseline_branch={{baseline_branch}}"
+        {% else %}
+        "view_spans?commit_sha1={{commit_sha1}}&workload_name={{name}}{%- call target_branch_param(target_branch) -%}"
+        {% endif %}
+        {% endmacro %}
+
+        {% let target_branch_str %}
+        {% match target_branch %}
+        {% when Some with (branch) %}
+        {% let target_branch_str = branch.clone() %}
+        {% when None %}
+        {% let target_branch_str = "".to_string() %}
+        {% endmatch %}
+
+        <a href={% call base_url("main", target_branch_str) %} class="card-footer-item">Compare with main</a>
+
+        {% match target_branch %}
+        {% when Some with (branch) %}
+        {% if branch != "main" %}
+        <a href={% call base_url(branch, target_branch_str) %} class="card-footer-item">Compare with {{branch}}</a>
+        {% endif %}
+        {% when None %}
+        {% endmatch %}
+        <a href={% call base_url("", target_branch_str) %} class="card-footer-item">Compare with
+            previous</a>
+    </footer>
+</div>

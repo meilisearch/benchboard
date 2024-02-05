@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}{{ span }} in {{ workload_name }}- Benchboard{% endblock %}
+
+{% block content %}
+{% match baseline_commit_sha1 %}
+{% when Some with (baseline) %}
+{% include "view_span_comparison.html" %}
+{% when None %}
+{% include "view_span_no_comparison.html" %}
+{% endmatch %}
+{% endblock %}

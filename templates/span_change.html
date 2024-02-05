@@ -1,0 +1,29 @@
+{% match change %}
+
+{% when Change::Improvement with {target_stats, baseline_stats, difference, proportion} %}
+{% let outcome = "success" %}
+{% include "span_change_with_baseline.html" %}
+
+{% when Change::Regression with {target_stats, baseline_stats, difference, proportion} %}
+{% let outcome = "danger" %}
+{% include "span_change_with_baseline.html" %}
+
+{% when Change::Stable with {target_stats, baseline_stats, difference, proportion} %}
+{% let outcome = "info" %}
+{% include "span_change_with_baseline.html" %}
+
+{% when Change::Unstable with {target_stats, baseline_stats, difference, proportion} %}
+{% let outcome = "warning" %}
+{% include "span_change_with_baseline.html" %}
+
+{% when Change::New with { stats } %}
+{% let sha1 = target_commit_sha1.clone() %}
+{% let commit_short = "This commit" %}
+{% include "span_change_no_baseline.html" %}
+
+{% when Change::Lost with { stats } %}
+{% let sha1 = comparison.baseline_commit_sha1.clone() %}
+{% let commit_short = "Baseline" %}
+{% include "span_change_no_baseline.html" %}
+
+{% endmatch %}

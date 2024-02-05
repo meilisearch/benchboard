@@ -1,0 +1,41 @@
+{% if span == "::meta::total" %}
+<h3 class="title is-3"><a href="{{Self::view_span_url(self, span)}}">Total time</a>
+</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Commit</th>
+            <th>Total time</th>
+            <th>Time outside spans</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <th><abbr title="{{commit_short}} ({{sha1}})">{{sha1|commit_link(commit_short)|safe}}</abbr></th>
+            <th>{{stats.mean_time|to_ns}} (±{{stats.stddev_self_time|to_ns}})</th>
+            <th>{{stats.mean_self_time|to_ns}} (±{{stats.stddev_self_time|to_ns}})</th>
+        </tr>
+    </tbody>
+</table>
+{% else %}
+<h3 class="title is-3"><a href="{{Self::view_span_url(self, span)}}">{{span}}</a>
+</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Commit</th>
+            <th>Self time</th>
+            <th>Total time</th>
+            <th>Calls</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <th><abbr title="{{commit_short}} ({{sha1}})">{{sha1|commit_link(commit_short)|safe}}</abbr></th>
+            <th>{{stats.mean_self_time|to_ns}} (±{{stats.stddev_self_time|to_ns}})</th>
+            <th>{{stats.mean_time|to_ns}} (±{{stats.stddev_self_time|to_ns}})</th>
+            <th>{{stats.mean_call_count}} (±{{stats.stddev_call_count}})</th>
+        </tr>
+    </tbody>
+</table>
+{% endif %}

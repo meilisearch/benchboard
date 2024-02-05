@@ -1,0 +1,83 @@
+<h1 class="title">Workload {{workload_name}}</h1>
+
+{% let target_commit = target_commit_sha1.clone() %}
+{% let baseline_commit = comparison.baseline_commit_sha1.clone() %}
+
+{% include "commit_subtitle.html" %}
+
+
+{% match comparison.total_time %}
+{% when Some with (span_change) %}
+<section class="section">
+    {% let span = span_change.span.clone() %}
+    {% let change = span_change.change %}
+    {% include "span_change.html" %}
+</section>
+{% when None %}
+{% endmatch %}
+<section class="section">
+    <h2 class="title is-2">Improvements</h2>
+
+    {% for span_change in comparison.improvements.iter().rev() %}
+    <div class="block">
+        {% let span = span_change.span.clone() %}
+        {% let change = span_change.change %}
+        {% include "span_change.html" %}
+    </div>
+    {% endfor %}
+</section>
+<section class="section">
+    <h2 class="title is-2">Regressions</h2>
+
+    {% for span_change in comparison.regressions.iter().rev() %}
+    <div class="block">
+        {% let span = span_change.span.clone() %}
+        {% let change = span_change.change %}
+        {% include "span_change.html" %}
+    </div>
+    {% endfor %}
+</section>
+<section class="section">
+    <h2 class="title is-2">Stable</h2>
+
+    {% for span_change in comparison.stables %}
+    <div class="block">
+        {% let span = span_change.span.clone() %}
+        {% let change = span_change.change %}
+        {% include "span_change.html" %}
+    </div>
+    {% endfor %}
+</section>
+<section class="section">
+    <h2 class="title is-2">Unstable</h2>
+
+    {% for span_change in comparison.unstables %}
+    <div class="block">
+        {% let span = span_change.span.clone() %}
+        {% let change = span_change.change %}
+        {% include "span_change.html" %}
+    </div>
+    {% endfor %}
+</section>
+<section class="section">
+    <h2 class="title is-2">New</h2>
+
+    {% for span_change in comparison.news %}
+    <div class="block">
+        {% let span = span_change.span.clone() %}
+        {% let change = span_change.change %}
+        {% include "span_change.html" %}
+    </div>
+    {% endfor %}
+</section>
+<section class="section">
+    <h2 class="title is-2">Lost</h2>
+
+    {% for span_change in comparison.olds %}
+    <div class="block">
+        {% let span = span_change.span.clone() %}
+        {% let change = span_change.change %}
+        {% include "span_change.html" %}
+    </div>
+    {% endfor %}
+</section>

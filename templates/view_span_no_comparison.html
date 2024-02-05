@@ -1,0 +1,11 @@
+<h1 class="title">Span {{span}} in <code>{{workload_name}}</code></h1>
+{% match target_branch %}
+{% when Some with (branch) %}
+<h2 class="subtitle">{{target_commit_sha1|commit|safe}} on {{ branch|branch|safe }}</h2>
+{% when None %}
+<h2 class="subtitle">{{target_commit_sha1|commit|safe}}</h2>
+{% endmatch %}
+
+<div class="section">
+    {{plot|safe}}
+</div>

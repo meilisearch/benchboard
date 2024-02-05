@@ -1,0 +1,71 @@
+{% if span == "::meta::total" %}
+<h3 class="title is-3"><a href="{{Self::view_span_url(self, span)}}">Total
+        time</a></h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Commit</th>
+            <th>Total time</th>
+            <th>Difference</th>
+            <th>Proportion</th>
+            <th>Time outside spans</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <th><abbr title="This commit ({{target_commit_sha1}})" class="has-text-weight-bold">
+                    {{target_commit_sha1|commit_link("This commit")|safe}}</abbr></th>
+            <th>{{target_stats.mean_time|to_ns}} (±{{target_stats.stddev_self_time|to_ns}})</th>
+            <th class="has-text-{{outcome}} has-text-weight-semibold">{{difference|to_ns}}</th>
+            <th>{{proportion}}%</th>
+            <th>{{target_stats.mean_self_time|to_ns}} (±{{target_stats.stddev_self_time|to_ns}})</th>
+        </tr>
+        <tr>
+            <th><abbr
+                    title="Baseline ({{comparison.baseline_commit_sha1}})">{{comparison.baseline_commit_sha1|commit_link("Baseline")|safe}}</abbr>
+            </th>
+            <th>{{baseline_stats.mean_time|to_ns}} (±{{baseline_stats.stddev_self_time|to_ns}})</th>
+            <th>0</th>
+            <th>±0%</th>
+            <th>{{baseline_stats.mean_self_time|to_ns}} (±{{baseline_stats.stddev_self_time|to_ns}})</th>
+        </tr>
+    </tbody>
+</table>
+{% else %}
+<h3 class="title is-3"><a href="{{Self::view_span_url(self, span)}}">{{span}}</a>
+</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Commit</th>
+            <th>Self time</th>
+            <th>Difference</th>
+            <th>Proportion</th>
+            <th>Total time</th>
+            <th>Calls</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <th><abbr title="This commit ({{target_commit_sha1}})" class="has-text-weight-bold">
+                    {{target_commit_sha1|commit_link("This commit")|safe}}
+                </abbr></th>
+            <th>{{target_stats.mean_self_time|to_ns}} (±{{target_stats.stddev_self_time|to_ns}})</th>
+            <th class="has-text-{{outcome}} has-text-weight-semibold">{{difference|to_ns}}</th>
+            <th>{{proportion}}%</th>
+            <th>{{target_stats.mean_time|to_ns}} (±{{target_stats.stddev_self_time|to_ns}})</th>
+            <th>{{target_stats.mean_call_count}} (±{{target_stats.stddev_call_count}})</th>
+        </tr>
+        <tr>
+            <th><abbr
+                    title="Baseline ({{comparison.baseline_commit_sha1}})">{{comparison.baseline_commit_sha1|commit_link("Baseline")|safe}}</abbr>
+            </th>
+            <th>{{baseline_stats.mean_self_time|to_ns}} (±{{baseline_stats.stddev_self_time|to_ns}})</th>
+            <th>0</th>
+            <th>±0%</th>
+            <th>{{baseline_stats.mean_time|to_ns}} (±{{baseline_stats.stddev_self_time|to_ns}})</th>
+            <th>{{baseline_stats.mean_call_count}} (±{{baseline_stats.stddev_call_count}})</th>
+        </tr>
+    </tbody>
+</table>
+{% endif %}

@@ -1,0 +1,19 @@
+<h1 class="title">Workload {{workload_name}}</h1>
+{% match target_branch %}
+{% when Some with (branch) %}
+<h2 class="subtitle">{{target_commit_sha1|commit|safe}} on
+    {{ branch|branch|safe }}</h2>
+{% when None %}
+<h2 class="subtitle">{{target_commit_sha1|commit|safe}}</h2>
+{% endmatch %}
+<section class="section">
+
+    {% for (span, stat) in stats.iter() %}
+    <div class="block">
+        {% let stats = stat %}
+        {% let sha1 = target_commit_sha1.clone() %}
+        {% let commit_short = "This commit" %}
+        {% include "span_change_no_baseline.html" %}
+    </div>
+    {% endfor %}
+</section>

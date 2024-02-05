@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="block">
+  <h2 class="title">Latest invocations</h2>
+
+  <table class="table is-fullwidth">
+
+    <thead>
+      <tr>
+        <th>Status</th>
+        <th>Id</th>
+        <th>Commit</th>
+        <th>Machine</th>
+        <th>Start Reason</th>
+        <th>Branch</th>
+        <th>Tag</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for invocation in latest_invocation_progress %}
+      {% include "invocation_progress.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+<section class="block">
+  <h2 class="title">Workloads on
+    <code>{{"main"|branch|safe}}</code>
+  </h2>
+
+  {% for workload in workloads_on_main %}
+  <div class="block">
+    {{workload|safe}}
+  </div>
+  {% endfor %}
+</section>
+<section class="block">
+  <h2 class="title">Other recent workloads</h2>
+
+  {% for workload in recent_workloads %}
+  <div class="block">
+    {{workload|safe}}
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}

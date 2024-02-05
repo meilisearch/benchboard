@@ -1,0 +1,25 @@
+{% macro target_branch_str %}
+{% match target_branch %}
+{% when Some with (branch) %}
+on {{branch|branch|safe}}
+{% when None %}
+{% endmatch %}
+{% endmacro %}
+
+{% macro baseline_str %}
+{% match baseline_branch %}
+{% when Some with (branch) %}
+branch {{branch|branch|safe}} (on {{baseline_commit|commit|safe}})
+{% when None %}
+{{baseline_commit|commit|safe}}
+{% endmatch %}
+{% endmacro %}
+
+<h2 class="subtitle">Comparing {{target_commit|commit|safe}} {% call target_branch_str() %} to {% call baseline_str() %}
+</h2>
+
+
+<div class="block">
+    <a class="button is-link" target="_blank"
+        href="https://github.com/meilisearch/meilisearch/compare/{{baseline_commit}}..{{target_commit}}">Diff</a>
+</div>

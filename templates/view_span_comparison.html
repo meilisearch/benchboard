@@ -1,0 +1,10 @@
+<h1 class="title">Span {{span}} in <code>{{workload_name}}</code></h1>
+
+{% let baseline_commit = baseline.clone() %}
+{% let target_commit = target_commit_sha1.clone() %}
+
+{% include "commit_subtitle.html" %}
+
+<div class="section">
+    {{plot|safe}}
+</div>

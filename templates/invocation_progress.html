@@ -1,0 +1,109 @@
+<tr>
+
+    {% match invocation.status %}
+    {% when InvocationStatus::Completed %}
+    <td class="has-text-success">
+        ✅ Completed
+    </td>
+    {% when InvocationStatus::Timeout %}
+    <td class="has-text-danger">
+        ⌛️ Timeout
+    </td>
+    {% when InvocationStatus::Canceled %}
+    <td class="has-text-warning">
+        🚫 Canceled
+    </td>
+    {% when InvocationStatus::Failed with (failure_reason) %}
+    <td class="has-text-danger">
+        ❌ Failed with <span class="has-text-danger-dark">{{failure_reason}}</span>
+    </td>
+    {% when InvocationStatus::Running %}
+    <td>
+        {% match invocation.progress %}
+        {% when Some with (progress) %}
+        <div class="table-container">
+            <table class="table is-fullwidth">
+                <thead>
+                    <tr>
+                        <th class="has-text-centered">
+                            <div class="lds-ring has-text-centered">
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                            </div>
+
+                            Workload
+                        </th>
+                        <th class="has-text-centered">Total</th>
+                        <th class="has-text-centered">Workloads</th>
+                        <th class="has-text-centered">Runs for workload</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        {% match progress.current_workload %}
+                        {% when Some with (current_workload) %}
+                        <td class="has-text-centered">
+                            {{current_workload}}
+                        </td>
+                        {% when None %}
+                        <td class="has-text-centered has-text-light-grey is-italic">
+                            Not started
+                        </td>
+                        {% endmatch %}
+                        <td class="has-text-centered">{{progress.as_percent()}}%</td>
+                        <td class="has-text-centered">
+                            {{progress.completed_workloads}}/{{progress.max_workloads}}
+                        </td>
+                        {% if progress.max_runs != 0 %}
+                        <td class="has-text-centered">
+                            {{progress.completed_runs}}/{{progress.max_runs}}
+                        </td>
+                        {% else %}
+                        <td class="has-text-centered has-text-light-grey is-italic">
+                            No workload started
+                        </td>
+                        {% endif %}
+
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        {% when None %}
+        {% endmatch %}
+    </td>
+    {% endmatch %}
+    <td>{{invocation.uuid}}</td>
+    <td>{{invocation.commit_sha1|commit|safe}}</td>
+    <td>{{invocation.machine_hostname}}</td>
+
+    {% match invocation.reason %}
+    {% when Some with (reason) %}
+    <td>
+        {{reason|markdown}}
+    </td>
+    {% when None %}
+    <td class="has-text-light-grey is-italic">
+        None
+    </td>
+    {% endmatch %}
+
+    {% match invocation.branch %}
+    {% when Some with (branch) %}
+    <td>{{branch|branch|safe}}</td>
+    {% when None %}
+    <td class="has-text-light-grey is-italic">
+        None
+    </td>
+    {% endmatch %}
+
+    {% match invocation.tag %}
+    {% when Some with (tag) %}
+    <td>{{tag}}</td>
+    {% when None %}
+    <td class="has-text-light-grey is-italic">
+        None
+    </td>
+    {% endmatch %}
+</tr>

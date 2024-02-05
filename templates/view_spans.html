@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}{{ workload_name }}- Benchboard{% endblock %}
+{% block content %}
+{% match span_stats %}
+{% when SpanStats::NoComparison with (stats) %}
+{% include "view_spans_no_comparison.html" %}
+{% when SpanStats::Comparison with (comparison) %}
+{% include "view_spans_comparison.html" %}
+{% endmatch %}
+{% endblock %}

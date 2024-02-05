@@ -1,0 +1,52 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *' # Every day at 2:00am
+  release:
+    types: [published]
+
+
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+    - name: Fmt
+      run: cargo fmt --check
+    - name: Clippy
+      run: cargo clippy
+
+  publish:
+    name: Publish binary for Linux
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build
+      run: cargo build --release --locked
+    # No need to upload binaries for dry run (cron)
+    - name: Upload binaries to release
+      if: github.event_name == 'release'
+      uses: svenstaro/upload-release-action@2.7.0
+      with:
+        file: target/release/benchboard
+        tag: ${{ github.ref }}
+
