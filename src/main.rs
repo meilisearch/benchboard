@@ -17,8 +17,11 @@ use sqlx::{
     ConnectOptions, Executor, Row, SqlitePool,
 };
 use time::format_description::well_known::Iso8601;
-use tower_http::validate_request::ValidateRequestHeaderLayer;
-use tracing_subscriber::{fmt::format::FmtSpan, layer::SubscriberExt, Layer};
+use tower::layer::Layer;
+use tower_http::{
+    normalize_path::NormalizePathLayer, validate_request::ValidateRequestHeaderLayer,
+};
+use tracing_subscriber::{fmt::format::FmtSpan, layer::SubscriberExt, Layer as _};
 use uuid::Uuid;
 
 type Tx = axum_sqlx_tx::Tx<sqlx::Sqlite>;
@@ -251,12 +254,14 @@ async fn main() -> anyhow::Result<()> {
 
     let view_routes = view::router(state.clone(), layer.clone());
 
-    let app = Router::new()
-        .nest("/api/v1", api_routes)
-        .nest("", view_routes)
-        .route_service("/stylesheet.css", get(get_style))
-        .route_service("/custom.css", get(get_custom_style))
-        .route_service("/scouter.png", get(get_icon));
+    let app = NormalizePathLayer::trim_trailing_slash().layer(
+        Router::new()
+            .nest("/api/v1", api_routes)
+            .nest("", view_routes)
+            .route_service("/stylesheet.css", get(get_style))
+            .route_service("/custom.css", get(get_custom_style))
+            .route_service("/scouter.png", get(get_icon)),
+    );
 
     tokio::spawn(async move {
         invocation_timeouts.run().await;
@@ -266,7 +271,12 @@ async fn main() -> anyhow::Result<()> {
         .await
         .with_context(|| format!("Could not bind to {}", args.http_addr))?;
     tracing::info!(http_addr = &args.http_addr, "Server listening");
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(
+        listener,
+        axum::ServiceExt::<axum::extract::Request>::into_make_service(app),
+    )
+    .await
+    .unwrap();
     Ok(())
 }
 
