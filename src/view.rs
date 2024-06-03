@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::rc::Rc;
 use std::str::FromStr;
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use askama::Template;
 use axum::{extract::Query, http::StatusCode, routing::get, Router};
 use axum_sqlx_tx::Layer;
@@ -60,6 +60,13 @@ mod filters {
         Ok(format!(
             r#"<a href="https://github.com/meilisearch/meilisearch/tree/{}">{}</a>"#,
             branch_name, branch_name
+        ))
+    }
+
+    pub fn tag(tag_ref: impl Display) -> ::askama::Result<String> {
+        Ok(format!(
+            r#"<a href="https://github.com/meilisearch/meilisearch/tree/{}">{}</a>"#,
+            tag_ref, tag_ref
         ))
     }
 
@@ -220,6 +227,8 @@ impl Default for WorkloadSummaryTotal {
 }
 
 async fn home(mut tx: Tx) -> Result<HomeTemplate> {
+    const WORKLOAD_ON_MAIN: usize = 5;
+    const RECENT_WORKLOADS: usize = 15;
     let latest = latest_completed_invocations(&mut tx, 40).await?;
 
     let mut workloads_on_main = Vec::new();
@@ -232,12 +241,12 @@ async fn home(mut tx: Tx) -> Result<HomeTemplate> {
         reason,
     } in latest
     {
-        if workloads_on_main.len() > 5 && recent_workloads.len() > 5 {
+        if workloads_on_main.len() > WORKLOAD_ON_MAIN && recent_workloads.len() > RECENT_WORKLOADS {
             break;
         }
         match branch {
             Some(branch) if branch == "main" => {
-                if workloads_on_main.len() > 5 {
+                if workloads_on_main.len() > WORKLOAD_ON_MAIN {
                     continue;
                 }
                 let baseline_commit = latest_commits_for_branch(
@@ -278,7 +287,7 @@ async fn home(mut tx: Tx) -> Result<HomeTemplate> {
                 continue;
             }
             branch => {
-                if recent_workloads.len() > 5 {
+                if recent_workloads.len() > RECENT_WORKLOADS {
                     continue;
                 }
                 // FIXME: determine baseline_branch with heuristics:
@@ -314,7 +323,7 @@ async fn home(mut tx: Tx) -> Result<HomeTemplate> {
         }
     }
 
-    let latest_invocation_progress = latest_invocation_progress(&mut tx, 5).await?;
+    let latest_invocation_progress = latest_invocation_progress(&mut tx, 8).await?;
 
     Ok(HomeTemplate {
         latest_invocation_progress,
@@ -439,6 +448,8 @@ struct ViewSpansTemplate {
     target_commit_sha1: String,
     target_branch: Option<String>,
     baseline_branch: Option<String>,
+    target_tag: Option<String>,
+    baseline_tag: Option<String>,
     span_stats: SpanStats,
 }
 
@@ -495,9 +506,18 @@ struct SpanChange {
 #[derive(Deserialize)]
 struct ViewSpansQuery {
     workload_name: String,
-    commit_sha1: String,
+    // target
+    commit_sha1: Option<String>,
     #[serde(default)]
     target_branch: Option<String>,
+    #[serde(default)]
+    target_tag: Option<String>,
+
+    // baseline
+    #[serde(default)]
+    baseline_commit: Option<String>,
+    #[serde(default)]
+    baseline_tag: Option<String>,
     #[serde(default)]
     baseline_branch: Option<String>,
 }
@@ -508,22 +528,74 @@ async fn view_spans(
         workload_name,
         commit_sha1,
         target_branch,
+        target_tag,
+        baseline_commit,
+        baseline_tag,
         baseline_branch,
     }): Query<ViewSpansQuery>,
 ) -> Result<ViewSpansTemplate> {
-    let latest_commits = if let Some(branch) = baseline_branch.as_deref() {
-        latest_commits_for_branch(&mut tx, branch, 5, Some(&commit_sha1), &workload_name).await?
-    } else {
-        latest_commits_for_worfklow(&mut tx, 1, &commit_sha1, &workload_name).await?
+    // determine target commit_sha1
+    let commit_sha1 = 'commit: {
+        if let Some(commit_sha1) = commit_sha1 {
+            break 'commit commit_sha1;
+        }
+        if let Some(tag) = target_tag.as_deref() {
+            let commit = commit_for_tag(&mut tx, tag, &workload_name).await?;
+            if let Some(commit) = commit {
+                break 'commit commit.sha1;
+            } else {
+                return Err(anyhow!("Could not find commit for tag {}", tag))
+                    .with_code(StatusCode::NOT_FOUND);
+            }
+        }
+        if let Some(branch) = target_branch.as_deref() {
+            let mut latest_commits =
+                latest_commits_for_branch(&mut tx, branch, 1, None, &workload_name).await?;
+            if let Some(commit) = latest_commits.pop() {
+                break 'commit commit.sha1;
+            } else {
+                return Err(anyhow!("Could not find commmit on branch {}", branch))
+                    .with_code(StatusCode::NOT_FOUND);
+            }
+        }
+        return Err(anyhow!(
+            "Specify one of commit_sha1, target_branch or target_tag"
+        ))
+        .with_code(StatusCode::BAD_REQUEST);
     };
+
+    let baseline_commit = 'commit: {
+        if let Some(baseline_commit) = baseline_commit {
+            break 'commit Some(baseline_commit);
+        }
+        if let Some(baseline_tag) = baseline_tag.as_deref() {
+            if let Some(commit) = commit_for_tag(&mut tx, baseline_tag, &workload_name).await? {
+                break 'commit Some(commit.sha1);
+            }
+        }
+        if let Some(baseline_branch) = baseline_branch.as_deref() {
+            let mut latest_commits = latest_commits_for_branch(
+                &mut tx,
+                baseline_branch,
+                1,
+                Some(&commit_sha1),
+                &workload_name,
+            )
+            .await?;
+            if let Some(commit) = latest_commits.pop() {
+                break 'commit Some(commit.sha1);
+            }
+        }
+        let mut latest_commits =
+            latest_commits_for_worfklow(&mut tx, 1, &commit_sha1, &workload_name).await?;
+        latest_commits.pop().map(|commit| commit.sha1)
+    };
+
     let commit_data = data_for_commit(&mut tx, &commit_sha1, &workload_name).await?;
-    let mut data_for_latest_commits = Vec::new();
-    for commit in &latest_commits {
-        data_for_latest_commits.push(data_for_commit(&mut tx, &commit.sha1, &workload_name).await?);
-    }
-    if let Some(latest_commit) = latest_commits.first() {
-        let data_for_latest_commit = data_for_latest_commits.first().unwrap();
-        let report = compare_commits(commit_data, data_for_latest_commit);
+
+    if let Some(baseline_commit) = baseline_commit {
+        let baseline_data = data_for_commit(&mut tx, &baseline_commit, &workload_name).await?;
+        let report = compare_commits(commit_data, &baseline_data);
 
         let mut total_time = None;
         let mut improvements = Vec::new();
@@ -533,7 +605,7 @@ async fn view_spans(
         let mut news = Vec::new();
         let mut olds = Vec::new();
 
-        let baseline_sha1 = Rc::new(latest_commit.sha1.clone());
+        let baseline_sha1 = Rc::new(baseline_commit.clone());
 
         for (span, change) in report.into_iter() {
             if span == "::meta::total" {
@@ -568,6 +640,8 @@ async fn view_spans(
             span_stats,
             target_branch,
             baseline_branch,
+            target_tag,
+            baseline_tag,
         })
     } else {
         let span_stats = commit_data
@@ -579,6 +653,8 @@ async fn view_spans(
             target_commit_sha1: commit_sha1,
             target_branch,
             baseline_branch,
+            target_tag,
+            baseline_tag,
             span_stats: SpanStats::NoComparison(span_stats),
         })
     }
@@ -985,6 +1061,30 @@ async fn latest_commits_for_worfklow(
     Ok(commits)
 }
 
+async fn commit_for_tag(tx: &mut Tx, tag: &str, workload_name: &str) -> Result<Option<Commit>> {
+    let query = sqlx::query(
+        r#"SELECT commits.sha1 FROM commits
+        INNER JOIN workloads ON invocations.uuid = workloads.invocation_uuid
+        INNER JOIN invocations ON commits.sha1 = invocations.commit_sha1
+    WHERE workloads.name = ? AND invocations.tag = ? AND invocations.status = ?
+    GROUP BY commits.sha1
+    ORDER BY commits.date DESC
+    LIMIT 1"#,
+    )
+    .bind(workload_name)
+    .bind(tag)
+    .bind(InvocationStatus::Completed.to_db_status());
+
+    let commit = query
+        .map(|row: SqliteRow| Commit { sha1: row.get(0) })
+        .fetch_optional(tx)
+        .await
+        .context("fetching commit for tag")
+        .with_code(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(commit)
+}
+
 async fn latest_commits_for_branch(
     tx: &mut Tx,
     branch: &str,
@@ -1030,12 +1130,14 @@ async fn latest_commits_for_branch(
     } else {
         sqlx::query(
             r#"SELECT commits.sha1 FROM commits
+        INNER JOIN workloads ON invocations.uuid = workloads.invocation_uuid
         INNER JOIN invocations ON commits.sha1 = invocations.commit_sha1
-        WHERE invocations.branch = ? AND invocations.status = ?
+        WHERE workloads.name = ? AND invocations.branch = ? AND invocations.status = ?
         GROUP BY commits.sha1
         ORDER BY commits.date DESC
         LIMIT ?"#,
         )
+        .bind(workload_name)
         .bind(branch)
         .bind(InvocationStatus::Completed.to_db_status())
         .bind(count)
@@ -1064,6 +1166,8 @@ async fn view_span(
         baseline,
         target_branch,
         baseline_branch,
+        target_tag,
+        baseline_tag,
     }): Query<ViewSpanQuery>,
 ) -> Result<ViewSpanTemplate> {
     let target_data = data_for_span(&mut tx, &target, &workload_name, &span).await?;
@@ -1102,6 +1206,8 @@ async fn view_span(
         baseline_commit_sha1: baseline,
         baseline_branch,
         target_branch,
+        target_tag,
+        baseline_tag,
         plot,
     })
 }
@@ -1170,6 +1276,8 @@ struct ViewSpanTemplate {
     baseline_commit_sha1: Option<String>,
     target_branch: Option<String>,
     baseline_branch: Option<String>,
+    target_tag: Option<String>,
+    baseline_tag: Option<String>,
     plot: String,
 }
 
@@ -1184,4 +1292,8 @@ struct ViewSpanQuery {
     target_branch: Option<String>,
     #[serde(default)]
     baseline_branch: Option<String>,
+    #[serde(default)]
+    target_tag: Option<String>,
+    #[serde(default)]
+    baseline_tag: Option<String>,
 }
