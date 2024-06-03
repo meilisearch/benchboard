@@ -1,3 +1,11 @@
+{% macro target_tag_str %}
+{% match target_tag %}
+{% when Some with (tag) %}
+(tagged {{tag|tag|safe}})
+{% when None %}
+{% endmatch %}
+{% endmacro %}
+
 {% macro target_branch_str %}
 {% match target_branch %}
 {% when Some with (branch) %}
@@ -6,16 +14,25 @@ on {{branch|branch|safe}}
 {% endmatch %}
 {% endmacro %}
 
-{% macro baseline_str %}
-{% match baseline_branch %}
-{% when Some with (branch) %}
-branch {{branch|branch|safe}} (on {{baseline_commit|commit|safe}})
+{% macro baseline_tag_str %}
+{% match baseline_tag %}
+{% when Some with (tag) %}
+(tagged {{tag|tag|safe}})
 {% when None %}
-{{baseline_commit|commit|safe}}
 {% endmatch %}
 {% endmacro %}
 
-<h2 class="subtitle">Comparing {{target_commit|commit|safe}} {% call target_branch_str() %} to {% call baseline_str() %}
+{% macro baseline_str %}
+{% match baseline_branch %}
+{% when Some with (branch) %}
+branch {{branch|branch|safe}} (on {{baseline_commit|commit|safe}}) {% call baseline_tag_str() %}
+{% when None %}
+{{baseline_commit|commit|safe}} {% call baseline_tag_str() %}
+{% endmatch %}
+{% endmacro %}
+
+<h2 class="subtitle">Comparing {{target_commit|commit|safe}} {% call target_tag_str() %} {% call target_branch_str() %}
+    to {% call baseline_str() %}
 </h2>
 
 
