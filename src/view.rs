@@ -216,16 +216,6 @@ struct WorkloadSummaryTemplate {
     unstable: usize,
 }
 
-pub enum WorkloadSummaryTotal {
-    Neutral(f64),
-}
-
-impl Default for WorkloadSummaryTotal {
-    fn default() -> Self {
-        Self::Neutral(0.)
-    }
-}
-
 async fn home(mut tx: Tx) -> Result<HomeTemplate> {
     const WORKLOAD_ON_MAIN: usize = 5;
     const RECENT_WORKLOADS: usize = 15;
