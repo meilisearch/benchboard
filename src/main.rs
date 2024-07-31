@@ -89,8 +89,8 @@ impl InvocationTimeouts {
         while let Some((uuid, duration)) = self.timeout_receiver.recv().await {
             let pool = self.pool.clone();
             tokio::spawn(async move {
-                let deadline = time::Instant::now() + duration;
-                tokio::time::sleep_until(deadline.into_inner().into()).await;
+                let deadline = std::time::Instant::now() + duration;
+                tokio::time::sleep_until(deadline.into()).await;
                 match Self::on_deadline(pool, uuid).await {
                     Ok(()) => {}
                     Err(error) => {
@@ -648,7 +648,7 @@ pub struct InvocationCancelRequest {
 async fn insert_commit(tx: &mut Tx, commit: &NewCommit) -> Result<()> {
     sqlx::query("INSERT OR IGNORE INTO commits (sha1, date, message) VALUES (?, ?, ?)")
         .bind(&commit.sha1)
-        .bind(&commit.commit_date.format(&Iso8601::DEFAULT).unwrap())
+        .bind(commit.commit_date.format(&Iso8601::DEFAULT).unwrap())
         .bind(&commit.message)
         .execute(&mut *tx)
         .await
