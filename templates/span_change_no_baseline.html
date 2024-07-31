@@ -33,7 +33,8 @@
         <tr>
             <th><abbr title="{{commit_short}} ({{sha1}})">{{sha1|commit_link(commit_short)|safe}}</abbr></th>
             <th>{{stats.mean_self_time|to_ns}} (±{{stats.stddev_self_time|to_ns}})</th>
-            <th>{{stats.mean_time|to_ns}} (±{{stats.stddev_self_time|to_ns}})</th>
+            <th class="has-text-{{outcome}} has-text-weight-semibold">{{stats.mean_time|to_ns}}
+                (±{{stats.stddev_self_time|to_ns}})</th>
             <th>{{stats.mean_call_count}} (±{{stats.stddev_call_count}})</th>
         </tr>
     </tbody>

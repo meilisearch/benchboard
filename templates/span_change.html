@@ -19,11 +19,13 @@
 {% when Change::New with { stats } %}
 {% let sha1 = target_commit_sha1.clone() %}
 {% let commit_short = "This commit" %}
+{% let outcome = "danger" %}
 {% include "span_change_no_baseline.html" %}
 
 {% when Change::Lost with { stats } %}
 {% let sha1 = comparison.baseline_commit_sha1.clone() %}
 {% let commit_short = "Baseline" %}
+{% let outcome = "success" %}
 {% include "span_change_no_baseline.html" %}
 
 {% endmatch %}
