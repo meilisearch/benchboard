@@ -13,6 +13,7 @@
         {% let stats = stat %}
         {% let sha1 = target_commit_sha1.clone() %}
         {% let commit_short = "This commit" %}
+        {% let outcome = "info" %}
         {% include "span_change_no_baseline.html" %}
     </div>
     {% endfor %}
