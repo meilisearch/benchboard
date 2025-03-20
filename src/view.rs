@@ -599,7 +599,11 @@ async fn view_spans(
 
     let baseline_commit = 'commit: {
         if let Some(baseline_commit) = baseline_commit {
-            break 'commit Some(baseline_commit);
+            if baseline_commit.is_empty() {
+                break 'commit None;
+            } else {
+                break 'commit Some(baseline_commit);
+            }
         }
         if let Some(baseline_tag) = baseline_tag.as_deref() {
             if let Some(commit) = commit_for_tag(&mut tx, baseline_tag, &workload_name).await? {
