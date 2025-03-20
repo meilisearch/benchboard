@@ -477,7 +477,10 @@ struct ViewSpansTemplate {
     baseline_branch: Option<String>,
     target_tag: Option<String>,
     baseline_tag: Option<String>,
+    baseline_commit: Option<String>,
     span_stats: SpanStats,
+    latest_workloads: Vec<String>,
+    latest_commits: Vec<(String, String)>,
 }
 
 impl ViewSpansTemplate {
@@ -561,6 +564,9 @@ async fn view_spans(
         baseline_branch,
     }): Query<ViewSpansQuery>,
 ) -> Result<ViewSpansTemplate> {
+    let latest_workloads = latest_workloads(&mut tx, 32).await?;
+    let latest_commits = latest_commits(&mut tx, 30).await?;
+
     // determine target commit_sha1
     let commit_sha1 = 'commit: {
         if let Some(commit_sha1) = commit_sha1 {
@@ -652,7 +658,7 @@ async fn view_spans(
         improvements.sort_by_key(|x| x.change.abs_difference());
         regressions.sort_by_key(|x| x.change.abs_difference());
         let span_stats = SpanStats::Comparison(Box::new(SpanComparison {
-            baseline_commit_sha1: baseline_sha1,
+            baseline_commit_sha1: baseline_sha1.clone(),
             total_time,
             improvements,
             regressions,
@@ -669,6 +675,9 @@ async fn view_spans(
             baseline_branch,
             target_tag,
             baseline_tag,
+            baseline_commit: Some(baseline_sha1.to_string()),
+            latest_commits,
+            latest_workloads,
         })
     } else {
         let span_stats = commit_data
@@ -682,7 +691,10 @@ async fn view_spans(
             baseline_branch,
             target_tag,
             baseline_tag,
+            baseline_commit: None,
             span_stats: SpanStats::NoComparison(span_stats),
+            latest_commits,
+            latest_workloads,
         })
     }
 }
