@@ -1,0 +1,73 @@
+<div class="block">
+    <details>
+        <summary class="button is-small">Change commits or workload</summary>
+        <br />
+        <br />
+        <form class="block">
+            <div class="field">
+                <label class="label">Workload</label>
+                <div class="control">
+                    <input class="input" name="workload_name" type="text" list="workload_name_list"
+                        value="{{workload_name}}" required autocomplete="off" />
+                    <datalist id="workload_name_list">
+                        <option value="{{workload_name}}"></option>
+                        {% for workload_name in latest_workloads %}
+                        <option value="{{workload_name}}"></option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+                <p class="help">Name of the workload you want to evaluate</p>
+            </div>
+
+
+            <div class="field">
+                <label class="label">Target commit SHA1</label>
+                <div class="control">
+                    <input class="input" name="commit_sha1" type="text" value="{{target_commit_sha1}}"
+                        autocomplete="off" list="commit_sha1_list" required />
+                    <datalist id="commit_sha1_list">
+                        <option value="{{target_commit_sha1}}">Current target commit</option>
+                        {% match baseline_commit %}
+                        {% when Some with (baseline_commit) %}
+                        <option value="{{baseline_commit}}">Switch to baseline commit</option>
+                        {% when None %}
+                        {% endmatch %}
+                        {% for (commit_sha1, commit_message) in latest_commits %}
+                        <option value="{{commit_sha1}}">{{commit_sha1|commit|safe}} - {{ commit_message|truncate(180) }}
+                        </option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+                <p class="help">Commit you want to evaluate</p>
+            </div>
+
+            <div class="field">
+                <label class="label">Baseline commit SHA1</label>
+                <div class="control">
+                    <input class="input" name="baseline_commit" type="text" list="baseline_commit_list" {% match
+                        baseline_commit %} {% when Some with (baseline_commit) %} value="{{baseline_commit}}" {% when
+                        None %}{% endmatch %} autocomplete="off" />
+                    <datalist id="baseline_commit_list">
+                        {% match baseline_commit %}
+                        {% when Some with (baseline_commit) %}
+                        <option value="{{baseline_commit}}">Current baseline commit</option>
+                        {% when None %}
+                        {% endmatch %}
+                        <option value="{{target_commit_sha1}}">Switch to target commit</option>
+                        {% for (commit_sha1, commit_message) in latest_commits %}
+                        <option value="{{commit_sha1}}">{{commit_sha1|commit|safe}} - {{ commit_message|truncate(180) }}
+                        </option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+                <p class="help">Improvements and regressions are reported relative to this commit</p>
+            </div>
+
+            <div class="field">
+                <div class="control">
+                    <button class="button is-link">Submit</button>
+                </div>
+            </div>
+        </form>
+    </details>
+</div>

@@ -6,6 +6,9 @@
 {% when None %}
 <h2 class="subtitle">{{target_commit_sha1|commit|safe}}</h2>
 {% endmatch %}
+
+{% include "commit_form.html" %}
+
 <section class="section">
 
     {% for (span, stat) in stats.iter() %}
