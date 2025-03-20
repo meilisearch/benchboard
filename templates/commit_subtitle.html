@@ -25,9 +25,9 @@ on {{branch|branch|safe}}
 {% macro baseline_str %}
 {% match baseline_branch %}
 {% when Some with (branch) %}
-branch {{branch|branch|safe}} (on {{baseline_commit|commit|safe}}) {% call baseline_tag_str() %}
+branch {{branch|branch|safe}} (on {{some_baseline_commit|commit|safe}}) {% call baseline_tag_str() %}
 {% when None %}
-{{baseline_commit|commit|safe}} {% call baseline_tag_str() %}
+{{some_baseline_commit|commit|safe}} {% call baseline_tag_str() %}
 {% endmatch %}
 {% endmacro %}
 
@@ -35,8 +35,8 @@ branch {{branch|branch|safe}} (on {{baseline_commit|commit|safe}}) {% call basel
     to {% call baseline_str() %}
 </h2>
 
-
 <div class="block">
     <a class="button is-link" target="_blank"
-        href="https://github.com/meilisearch/meilisearch/compare/{{baseline_commit}}..{{target_commit}}">Diff</a>
+        href="https://github.com/meilisearch/meilisearch/compare/{{some_baseline_commit}}..{{target_commit}}">GitHub
+        Diff</a>
 </div>
