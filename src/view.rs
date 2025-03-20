@@ -423,6 +423,43 @@ async fn latest_completed_invocations(tx: &mut Tx, count: u32) -> Result<Vec<Wor
     .with_code(StatusCode::INTERNAL_SERVER_ERROR)
 }
 
+async fn latest_workloads(tx: &mut Tx, count: u32) -> Result<Vec<String>> {
+    sqlx::query(
+        r#"SELECT workloads.name FROM invocations
+    INNER JOIN workloads ON invocations.uuid = workloads.invocation_uuid
+    WHERE invocations.status = ?
+    GROUP BY workloads.name
+    ORDER BY invocations.uuid DESC
+    LIMIT ?"#,
+    )
+    .bind(InvocationStatus::Completed.to_db_status())
+    .bind(count)
+    .map(|row: SqliteRow| row.get(0))
+    .fetch_all(tx)
+    .await
+    .context("fetching latest workloads")
+    .with_code(StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+async fn latest_commits(tx: &mut Tx, count: u32) -> Result<Vec<(String, String)>> {
+    sqlx::query(
+        r#"SELECT commits.sha1, commits.message FROM invocations
+    INNER JOIN workloads ON invocations.uuid = workloads.invocation_uuid
+    INNER JOIN commits ON invocations.commit_sha1 = commits.sha1
+    WHERE invocations.status = ?
+    GROUP BY commits.sha1
+    ORDER BY invocations.uuid DESC
+    LIMIT ?"#,
+    )
+    .bind(InvocationStatus::Completed.to_db_status())
+    .bind(count)
+    .map(|row: SqliteRow| (row.get(0), row.get(1)))
+    .fetch_all(tx)
+    .await
+    .context("fetching latest commits")
+    .with_code(StatusCode::INTERNAL_SERVER_ERROR)
+}
+
 struct WorkloadDescription {
     workload_name: String,
     commit_sha1: String,
