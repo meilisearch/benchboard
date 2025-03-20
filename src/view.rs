@@ -423,6 +423,43 @@ async fn latest_completed_invocations(tx: &mut Tx, count: u32) -> Result<Vec<Wor
     .with_code(StatusCode::INTERNAL_SERVER_ERROR)
 }
 
+async fn latest_workloads(tx: &mut Tx, count: u32) -> Result<Vec<String>> {
+    sqlx::query(
+        r#"SELECT workloads.name FROM invocations
+    INNER JOIN workloads ON invocations.uuid = workloads.invocation_uuid
+    WHERE invocations.status = ?
+    GROUP BY workloads.name
+    ORDER BY invocations.uuid DESC
+    LIMIT ?"#,
+    )
+    .bind(InvocationStatus::Completed.to_db_status())
+    .bind(count)
+    .map(|row: SqliteRow| row.get(0))
+    .fetch_all(tx)
+    .await
+    .context("fetching latest workloads")
+    .with_code(StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+async fn latest_commits(tx: &mut Tx, count: u32) -> Result<Vec<(String, String)>> {
+    sqlx::query(
+        r#"SELECT commits.sha1, commits.message FROM invocations
+    INNER JOIN workloads ON invocations.uuid = workloads.invocation_uuid
+    INNER JOIN commits ON invocations.commit_sha1 = commits.sha1
+    WHERE invocations.status = ?
+    GROUP BY commits.sha1
+    ORDER BY invocations.uuid DESC
+    LIMIT ?"#,
+    )
+    .bind(InvocationStatus::Completed.to_db_status())
+    .bind(count)
+    .map(|row: SqliteRow| (row.get(0), row.get(1)))
+    .fetch_all(tx)
+    .await
+    .context("fetching latest commits")
+    .with_code(StatusCode::INTERNAL_SERVER_ERROR)
+}
+
 struct WorkloadDescription {
     workload_name: String,
     commit_sha1: String,
@@ -440,7 +477,10 @@ struct ViewSpansTemplate {
     baseline_branch: Option<String>,
     target_tag: Option<String>,
     baseline_tag: Option<String>,
+    baseline_commit: Option<String>,
     span_stats: SpanStats,
+    latest_workloads: Vec<String>,
+    latest_commits: Vec<(String, String)>,
 }
 
 impl ViewSpansTemplate {
@@ -524,6 +564,9 @@ async fn view_spans(
         baseline_branch,
     }): Query<ViewSpansQuery>,
 ) -> Result<ViewSpansTemplate> {
+    let latest_workloads = latest_workloads(&mut tx, 32).await?;
+    let latest_commits = latest_commits(&mut tx, 30).await?;
+
     // determine target commit_sha1
     let commit_sha1 = 'commit: {
         if let Some(commit_sha1) = commit_sha1 {
@@ -556,7 +599,11 @@ async fn view_spans(
 
     let baseline_commit = 'commit: {
         if let Some(baseline_commit) = baseline_commit {
-            break 'commit Some(baseline_commit);
+            if baseline_commit.is_empty() {
+                break 'commit None;
+            } else {
+                break 'commit Some(baseline_commit);
+            }
         }
         if let Some(baseline_tag) = baseline_tag.as_deref() {
             if let Some(commit) = commit_for_tag(&mut tx, baseline_tag, &workload_name).await? {
@@ -615,7 +662,7 @@ async fn view_spans(
         improvements.sort_by_key(|x| x.change.abs_difference());
         regressions.sort_by_key(|x| x.change.abs_difference());
         let span_stats = SpanStats::Comparison(Box::new(SpanComparison {
-            baseline_commit_sha1: baseline_sha1,
+            baseline_commit_sha1: baseline_sha1.clone(),
             total_time,
             improvements,
             regressions,
@@ -632,6 +679,9 @@ async fn view_spans(
             baseline_branch,
             target_tag,
             baseline_tag,
+            baseline_commit: Some(baseline_sha1.to_string()),
+            latest_commits,
+            latest_workloads,
         })
     } else {
         let span_stats = commit_data
@@ -645,7 +695,10 @@ async fn view_spans(
             baseline_branch,
             target_tag,
             baseline_tag,
+            baseline_commit: None,
             span_stats: SpanStats::NoComparison(span_stats),
+            latest_commits,
+            latest_workloads,
         })
     }
 }

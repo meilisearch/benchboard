@@ -1,10 +1,10 @@
 <h1 class="title">Workload {{workload_name}}</h1>
 
 {% let target_commit = target_commit_sha1.clone() %}
-{% let baseline_commit = comparison.baseline_commit_sha1.clone() %}
-
+{% let some_baseline_commit = comparison.baseline_commit_sha1.clone() %}
 {% include "commit_subtitle.html" %}
 
+{% include "commit_form.html" %}
 
 {% match comparison.total_time %}
 {% when Some with (span_change) %}
